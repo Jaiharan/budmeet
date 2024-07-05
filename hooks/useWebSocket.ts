@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 
 interface Message {
-  name: string;
-  message: string;
+  type: string;
+  message?: string;
+  data?: any;
 }
 
 const useWebSocket = (url: string) => {
@@ -14,26 +15,24 @@ const useWebSocket = (url: string) => {
     setWs(socket);
 
     socket.onopen = () => {
-      console.log('Connected to WebSocket server');
+      console.log("Connected to WebSocket server");
     };
 
     socket.onmessage = (event) => {
       try {
         const data: Message = JSON.parse(event.data);
-        if (typeof data.message === 'string' && typeof data.name === 'string') {
           setMessages((prevMessages) => [...prevMessages, data]);
-        }
       } catch (error) {
-        console.error('Error parsing message:', error);
+        console.error("Error parsing message:", error);
       }
     };
 
     socket.onclose = () => {
-      console.log('Disconnected from WebSocket server');
+      console.log("Disconnected from WebSocket server");
     };
 
     socket.onerror = (error) => {
-      console.error('WebSocket error:', error);
+      console.error("WebSocket error:", error);
     };
 
     return () => {
@@ -41,13 +40,31 @@ const useWebSocket = (url: string) => {
     };
   }, [url]);
 
-  const sendMessage = (message: string) => {
+  const joinRoom = (roomId: string) => {
     if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(message);
+      ws.send(JSON.stringify({ type: "join", roomId }));
     }
   };
 
-  return { messages, sendMessage };
+  const leaveRoom = (roomId: string) => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: "leave", roomId }));
+    }
+  };
+
+  const sendMessage = (roomId: string, message: string) => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: "message", roomId, content: message }));
+    }
+  };
+
+  const sendVideo = (roomId: string, videoTrack: MediaStreamTrack ) => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: "video", roomId, content: videoTrack }));
+    }
+  };
+
+  return { messages, sendMessage, sendVideo, joinRoom, leaveRoom };
 };
 
 export default useWebSocket;
