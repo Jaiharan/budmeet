@@ -42,7 +42,9 @@ const WebSocketComponent = () => {
   };
 
   const handleStopVideo = () => {
-    if (videoRef.current) {
+    if (videoRef.current && videoRef.current.srcObject) {
+      const stream = videoRef.current.srcObject as MediaStream;
+      stream.getTracks().forEach((track) => track.stop());
       videoRef.current.pause();
       videoRef.current.srcObject = null;
     }

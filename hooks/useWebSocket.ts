@@ -22,6 +22,15 @@ const useWebSocket = (url: string) => {
       try {
         const data: Message = JSON.parse(event.data);
           setMessages((prevMessages) => [...prevMessages, data]);
+
+          if (data.type === "video") {
+            const videoBlob = new Blob([data.data], { type: "video/webm" });
+            const videoUrl = URL.createObjectURL(videoBlob);
+            const videoElement = document.createElement("video");
+            videoElement.src = videoUrl;
+            videoElement.play();
+            document.body.appendChild(videoElement);
+          }
       } catch (error) {
         console.error("Error parsing message:", error);
       }

@@ -36,7 +36,7 @@ wss.on('connection', (ws: WebSocket) => {
       case 'video':
         rooms.get(roomId)?.forEach((client) => {
           if(client !== ws && client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify({ type: 'video', message: content }));
+            client.send(JSON.stringify({ type: 'video', videoTrack: MediaStreamTrack }));
           }
         });
         break;
