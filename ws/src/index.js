@@ -34,7 +34,7 @@ wss.on('connection', (ws) => {
             case 'video':
                 (_d = rooms.get(roomId)) === null || _d === void 0 ? void 0 : _d.forEach((client) => {
                     if (client !== ws && client.readyState === ws_1.WebSocket.OPEN) {
-                        client.send(JSON.stringify({ type: 'video', message: content }));
+                        client.send(message);
                     }
                 });
                 break;

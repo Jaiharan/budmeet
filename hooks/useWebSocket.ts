@@ -21,16 +21,11 @@ const useWebSocket = (url: string) => {
     socket.onmessage = (event) => {
       try {
         const data: Message = JSON.parse(event.data);
-          setMessages((prevMessages) => [...prevMessages, data]);
+        setMessages((prevMessages) => [...prevMessages, data]);
 
-          if (data.type === "video") {
-            const videoBlob = new Blob([data.data], { type: "video/webm" });
-            const videoUrl = URL.createObjectURL(videoBlob);
-            const videoElement = document.createElement("video");
-            videoElement.src = videoUrl;
-            videoElement.play();
-            document.body.appendChild(videoElement);
-          }
+        if (data.type === "video") {
+          handleVideoMessage(data.data);
+        }
       } catch (error) {
         console.error("Error parsing message:", error);
       }
@@ -67,10 +62,24 @@ const useWebSocket = (url: string) => {
     }
   };
 
-  const sendVideo = (roomId: string, videoTrack: MediaStreamTrack ) => {
+  const sendVideo = (roomId: string, stream: MediaStream) => {
     if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ type: "video", roomId, content: videoTrack }));
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          ws.send(event.data);
+        }
+      };
+      mediaRecorder.start();
     }
+  };
+
+  const handleVideoMessage = (videoData: Blob | ArrayBuffer) => {
+    const videoUrl = URL.createObjectURL(new Blob([videoData], { type: "video/webm" }));
+    const videoElement = document.createElement("video");
+    videoElement.src = videoUrl;
+    videoElement.autoplay = true;
+    document.body.appendChild(videoElement);
   };
 
   return { messages, sendMessage, sendVideo, joinRoom, leaveRoom };

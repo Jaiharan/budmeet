@@ -29,17 +29,23 @@ const WebSocketComponent = () => {
   };
 
   const handleStartVideo = async () => {
-    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true });
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         videoRef.current.play();
-        stream.getTracks().forEach((videoTrack) => {
-          sendVideo(roomId, videoTrack);
-        });
+        sendVideo(roomId, stream);
       }
+    } catch (error) {
+      console.error("Error accessing media devices:", error);
     }
-  };
+  } else {
+    console.error("getUserMedia is not supported");
+  }
+};
+
+  
 
   const handleStopVideo = () => {
     if (videoRef.current && videoRef.current.srcObject) {
