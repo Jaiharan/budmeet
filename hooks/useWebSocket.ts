@@ -19,15 +19,20 @@ const useWebSocket = (url: string) => {
     };
 
     socket.onmessage = (event) => {
-      try {
-        const data: Message = JSON.parse(event.data);
-        setMessages((prevMessages) => [...prevMessages, data]);
+      if (typeof event.data === 'string') {
+        try {
+          const data: Message = JSON.parse(event.data);
+          setMessages((prevMessages) => [...prevMessages, data]);
 
-        if (data.type === "video") {
-          handleVideoMessage(data.data);
+          if (data.type === "videoRoomId") {
+            console.log("Room ID set for video streaming:", data.message);
+          }
+        } catch (error) {
+          console.error("Error parsing message:", error);
         }
-      } catch (error) {
-        console.error("Error parsing message:", error);
+      } else if (event.data instanceof Blob) {
+        // Handle binary data (video)
+        handleVideoMessage(event.data);
       }
     };
 
@@ -64,18 +69,32 @@ const useWebSocket = (url: string) => {
 
   const sendVideo = (roomId: string, stream: MediaStream) => {
     if (ws && ws.readyState === WebSocket.OPEN) {
-      const mediaRecorder = new MediaRecorder(stream);
+      console.log("Came to useWebSocket");
+      
+      // Send room ID as a JSON message
+      ws.send(JSON.stringify({ type: 'videoRoomId', roomId }));
+  
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp8' });
+  
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
+          console.log("Recording video data", event.data);
+          
+          // Send video data as binary
           ws.send(event.data);
         }
       };
-      mediaRecorder.start();
+  
+      mediaRecorder.onstart = () => {
+        console.log("MediaRecorder started");
+      };
+  
+      mediaRecorder.start(100);  // Send data every 100ms
     }
   };
 
-  const handleVideoMessage = (videoData: Blob | ArrayBuffer) => {
-    const videoUrl = URL.createObjectURL(new Blob([videoData], { type: "video/webm" }));
+  const handleVideoMessage = (videoData: Blob) => {
+    const videoUrl = URL.createObjectURL(videoData);
     const videoElement = document.createElement("video");
     videoElement.src = videoUrl;
     videoElement.autoplay = true;

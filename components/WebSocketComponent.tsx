@@ -31,10 +31,11 @@ const WebSocketComponent = () => {
   const handleStartVideo = async () => {
   if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         videoRef.current.play();
+        console.log("Video started");
         sendVideo(roomId, stream);
       }
     } catch (error) {
