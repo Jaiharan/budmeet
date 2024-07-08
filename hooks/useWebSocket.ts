@@ -9,6 +9,7 @@ interface Message {
 const useWebSocket = (url: string) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [ws, setWs] = useState<WebSocket | null>(null);
+  const [videoDataCallback, setVideoDataCallback] = useState<((videoData: Blob) => void) | null>(null);
 
   useEffect(() => {
     const socket = new WebSocket(url);
@@ -18,7 +19,7 @@ const useWebSocket = (url: string) => {
       console.log("Connected to WebSocket server");
     };
 
-    socket.onmessage = (event) => {
+    socket.onmessage = async (event) => {
       if (typeof event.data === 'string') {
         try {
           const data: Message = JSON.parse(event.data);
@@ -31,8 +32,19 @@ const useWebSocket = (url: string) => {
           console.error("Error parsing message:", error);
         }
       } else if (event.data instanceof Blob) {
-        // Handle binary data (video)
-        handleVideoMessage(event.data);
+        try {
+          const blobData = await blobToArrayBuffer(event.data);
+          const blob = new Blob([blobData], { type: event.data.type });
+          
+          if (videoDataCallback) {
+            console.log("Received video data", blob);
+            videoDataCallback(blob);
+          } else {
+            console.error("Video data callback is not defined");
+          }
+        } catch (error) {
+          console.error("Error converting binary data to Blob:", error);
+        }
       }
     };
 
@@ -47,7 +59,7 @@ const useWebSocket = (url: string) => {
     return () => {
       socket.close();
     };
-  }, [url]);
+  }, [url, videoDataCallback]);
 
   const joinRoom = (roomId: string) => {
     if (ws && ws.readyState === WebSocket.OPEN) {
@@ -69,39 +81,48 @@ const useWebSocket = (url: string) => {
 
   const sendVideo = (roomId: string, stream: MediaStream) => {
     if (ws && ws.readyState === WebSocket.OPEN) {
-      console.log("Came to useWebSocket");
-      
+      console.log("Sending video stream to server");
+
       // Send room ID as a JSON message
       ws.send(JSON.stringify({ type: 'videoRoomId', roomId }));
-  
+
       const mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp8' });
-  
+
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           console.log("Recording video data", event.data);
-          
+
           // Send video data as binary
           ws.send(event.data);
         }
       };
-  
+
       mediaRecorder.onstart = () => {
         console.log("MediaRecorder started");
       };
-  
+
       mediaRecorder.start(100);  // Send data every 100ms
     }
   };
 
-  const handleVideoMessage = (videoData: Blob) => {
-    const videoUrl = URL.createObjectURL(videoData);
-    const videoElement = document.createElement("video");
-    videoElement.src = videoUrl;
-    videoElement.autoplay = true;
-    document.body.appendChild(videoElement);
+  const blobToArrayBuffer = (blob: Blob): Promise<ArrayBuffer> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (reader.result instanceof ArrayBuffer) {
+          resolve(reader.result);
+        } else {
+          reject(new Error("Failed to read binary data as ArrayBuffer"));
+        }
+      };
+      reader.onerror = () => {
+        reject(reader.error);
+      };
+      reader.readAsArrayBuffer(blob);
+    });
   };
 
-  return { messages, sendMessage, sendVideo, joinRoom, leaveRoom };
+  return { messages, sendMessage, sendVideo, joinRoom, leaveRoom, setVideoDataCallback };
 };
 
 export default useWebSocket;

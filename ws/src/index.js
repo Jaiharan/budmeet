@@ -15,7 +15,9 @@ wss.on('connection', (ws) => {
             if (roomId && rooms.has(roomId)) {
                 (_a = rooms.get(roomId)) === null || _a === void 0 ? void 0 : _a.forEach((client) => {
                     if (client !== ws && client.readyState === ws_1.WebSocket.OPEN) {
-                        client.send(message);
+                        // Ensure `message` is sent as binary data
+                        client.send(message, { binary: true });
+                        // console.log(message.toString());
                         console.log(`Broadcasting video data from ${clientName}`);
                     }
                 });

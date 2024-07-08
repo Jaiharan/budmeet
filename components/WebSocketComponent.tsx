@@ -1,17 +1,37 @@
 "use client";
-import { useState, useRef } from "react";
-import useWebSocket from "@/hooks/useWebSocket";
+import React, { useState, useRef, useEffect } from "react";
+import useWebSocket from "@/hooks/useWebSocket"; // Adjust the path as necessary
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 
 const WebSocketComponent = () => {
-  const { messages, joinRoom, leaveRoom, sendMessage, sendVideo } =
+  const { messages, joinRoom, leaveRoom, sendMessage, setVideoDataCallback, sendVideo } =
     useWebSocket("ws://localhost:8080");
   const [roomId, setRoomId] = useState("");
   const [input, setInput] = useState("");
   const [joined, setJoined] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    // Set up the video data callback when component mounts
+    setVideoDataCallback((videoData: Blob | null) => {
+      if (videoData && videoData.type && videoData.type.startsWith("video")) {
+        const videoUrl = URL.createObjectURL(videoData);
+        if (videoRef.current) {
+          videoRef.current.src = videoUrl;
+          videoRef.current.play();
+        }
+      } else {
+        console.error("Invalid video data received:", videoData);
+      }
+    });
+
+    // Clean up callback when component unmounts
+    return () => {
+      setVideoDataCallback(null);
+    };
+  }, [setVideoDataCallback]);
 
   const handleJoinRoom = () => {
     joinRoom(roomId);
@@ -29,24 +49,23 @@ const WebSocketComponent = () => {
   };
 
   const handleStartVideo = async () => {
-  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play();
-        console.log("Video started");
-        sendVideo(roomId, stream);
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play();
+          
+          console.log("Video started");
+          sendVideo(roomId, stream);
+        }
+      } catch (error) {
+        console.error("Error accessing media devices:", error);
       }
-    } catch (error) {
-      console.error("Error accessing media devices:", error);
+    } else {
+      console.error("getUserMedia is not supported");
     }
-  } else {
-    console.error("getUserMedia is not supported");
-  }
-};
-
-  
+  };
 
   const handleStopVideo = () => {
     if (videoRef.current && videoRef.current.srcObject) {

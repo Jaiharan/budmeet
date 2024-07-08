@@ -20,7 +20,9 @@ wss.on('connection', (ws: CustomWebSocket) => {
       if (roomId && rooms.has(roomId)) {
         rooms.get(roomId)?.forEach((client) => {
           if (client !== ws && client.readyState === WS.OPEN) {
-            client.send(message);
+            // Ensure `message` is sent as binary data
+            client.send(message, { binary: true });
+            // console.log(message.toString());
             console.log(`Broadcasting video data from ${clientName}`);
           }
         });
@@ -31,7 +33,6 @@ wss.on('connection', (ws: CustomWebSocket) => {
       // Handle JSON message (room ID or chat message)
       const decodedMessage = message.toString();
       const { type, roomId, content } = JSON.parse(decodedMessage);
-
       switch (type) {
         case 'videoRoomId':
           ws.roomId = roomId;
